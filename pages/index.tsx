@@ -2,10 +2,41 @@ import Head from 'next/head'
 import Image from 'next/image'
 import { Inter } from '@next/font/google'
 import styles from '../styles/Home.module.css'
+import firebase from '../firebase/clientApp'
+import { useAuthState } from 'react-firebase-hooks/auth'
+import { useCollection } from 'react-firebase-hooks/firestore'
+import { collection, query, where, getDocs } from "firebase/firestore";
+
 
 const inter = Inter({ subsets: ['latin'] })
 
 export default function Home() {
+
+  // initializes our authorization from firebase
+  const auth = firebase.auth() as any;
+  const [user, loading, error] = useAuthState(auth);
+
+  // stores the current user ID in a variable
+  const uid = user?.uid;
+
+  // initializes our firestore database
+  const db = firebase.firestore() as any;
+  const [accounts, accountsLoading, accountsError] = useCollection(db.collection("users"), {});
+  
+  // async function to query our data
+  async function queryRes(){
+    const colRef =  collection(db, "users");
+    const q = query(colRef, where("uID", "==", uid));
+    const users = await getDocs(q);
+    users.forEach(user => {
+      console.log(user.data())
+    })
+  }
+
+  // checks to make sure that our data is not loading. if it is not, we run our query
+  if (!accountsLoading){
+    queryRes();
+  }
 
   return (
     <>
@@ -33,6 +64,11 @@ export default function Home() {
               height={31}
               priority
             />
+          </div>
+          <div>
+            <form>
+              
+            </form>
           </div>
         </div>
       </main>

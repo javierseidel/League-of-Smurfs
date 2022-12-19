@@ -1,6 +1,6 @@
 import firebase from "firebase/compat/app";
 import "firebase/compat/auth";
-import "firebase/firestore";
+import "firebase/compat/firestore";
 
 
 // calls the api keys from our .env file to connect with firebase
