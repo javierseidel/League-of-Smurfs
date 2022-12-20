@@ -5,38 +5,87 @@ import styles from '../styles/Home.module.css'
 import firebase from '../firebase/clientApp'
 import { useAuthState } from 'react-firebase-hooks/auth'
 import { useCollection } from 'react-firebase-hooks/firestore'
-import { collection, query, where, getDocs } from "firebase/firestore";
+import { collection, query, where, getDocs, addDoc, doc, setDoc, onSnapshot } from "firebase/firestore";
+import {useEffect, useState} from 'react'
+import { getAuth, onAuthStateChanged } from "firebase/auth";
+
 
 
 const inter = Inter({ subsets: ['latin'] })
 
 export default function Home() {
 
+  const [newAccName, setnewAccName] = useState("");
+  const [newUserName, setnewUserName] = useState("");
+  const [newPass, setnewPass] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [users, setUsers] = useState<any[]>([]);
+
   // initializes our authorization from firebase
   const auth = firebase.auth() as any;
-  const [user, loading, error] = useAuthState(auth);
 
   // stores the current user ID in a variable
-  const uid = user?.uid;
-
+  const uid = auth.currentUser ? auth.currentUser.uid : null;
+  
   // initializes our firestore database
   const db = firebase.firestore() as any;
-  const [accounts, accountsLoading, accountsError] = useCollection(db.collection("users"), {});
-  
-  // async function to query our data
-  async function queryRes(){
-    const colRef =  collection(db, "users");
-    const q = query(colRef, where("uID", "==", uid));
-    const users = await getDocs(q);
-    users.forEach(user => {
-      console.log(user.data())
-    })
-  }
+  const colRef =  collection(db, "users");
 
-  // checks to make sure that our data is not loading. if it is not, we run our query
-  if (!accountsLoading){
-    queryRes();
+  // async function to add a new account
+  async function addNewAcc() {
+    const add = await addDoc(colRef, {accountName: newAccName, userName: newUserName, accountPassword: newPass, userID: uid})
   }
+  
+  // function which updates the screen with accounts from the user who is logged in
+  useEffect(() => {
+    const q = query(
+      colRef,
+      //  where('owner', '==', currentUserId),
+      where('userID', '==', uid) // does not need index
+      //  where('score', '<=', 100) // needs index  https://firebase.google.com/docs/firestore/query-data/indexing?authuser=1&hl=en
+      // orderBy('score', 'asc'), // be aware of limitations: https://firebase.google.com/docs/firestore/query-data/order-limit-data#limitations
+      // limit(1)
+    );
+
+    setLoading(true);
+    // const unsub = onSnapshot(q, (querySnapshot) => {
+    const unsub = onSnapshot(colRef, (querySnapshot) => {
+      const items: Array<any> = [];
+      querySnapshot.forEach((doc) => {
+        items.push(doc.data());
+      });
+      setUsers(items);
+      setLoading(false);
+    });
+    return () => {
+      unsub();
+    };
+
+    // eslint-disable-next-line
+  }, []);
+
+
+
+
+// this works to query, but I found a MUCH better way
+
+  // // async function to query our data
+  // async function queryRes(){
+  //   const q = query(colRef, where("userID", "==", uid));
+  //   const users = await getDocs(q);
+  //   users.forEach(user => {
+
+  //     console.log(user.data())
+  //   })
+  // }
+
+  // // checks to make see if our data is not loading. if it is, we run our query
+  // if (!accountsLoading){
+  //   queryRes();
+  // }
+
+
+
 
   return (
     <>
@@ -47,30 +96,23 @@ export default function Home() {
         <link rel="icon" href="/favicon.ico" />
       </Head>
       <main className={styles.main}>
-        <div className={styles.center}>
-          <Image
-            className={styles.logo}
-            src="/next.svg"
-            alt="Next.js Logo"
-            width={180}
-            height={37}
-            priority
-          />
-          <div className={styles.thirteen}>
-            <Image
-              src="/thirteen.svg"
-              alt="13"
-              width={40}
-              height={31}
-              priority
-            />
-          </div>
+
           <div>
-            <form>
-              
+            <form className = "add">
+              <input type="text" placeholder="Account Name..." onChange={(event) => {setnewAccName(event.target.value)}}/>
+              <input type="text" placeholder="Account UserName..." onChange={(event) => {setnewUserName(event.target.value)}}/>
+              <input type="text" placeholder="Account Password..." onChange={(event) => {setnewPass(event.target.value)}}/>
+              <button type="button" onClick={addNewAcc}>Add</button>
             </form>
           </div>
-        </div>
+          <div>
+          {users.map((user) => (
+            <div>
+              <p>{user.accountName}</p>
+            </div>
+          ))}
+          </div>
+
       </main>
     </>
   )
