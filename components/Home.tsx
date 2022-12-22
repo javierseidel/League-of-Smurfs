@@ -3,8 +3,9 @@ import React from 'react'
 import { Inter } from '@next/font/google'
 import styles from '../styles/Home.module.css'
 import firebase from '../firebase/clientApp'
-import { collection, query, where, getDocs, addDoc, doc, setDoc, onSnapshot } from "firebase/firestore";
+import { collection, query, where, deleteDoc, addDoc, doc, setDoc, onSnapshot } from "firebase/firestore";
 import {useEffect, useState} from 'react'
+import Accounts from './Accounts'
 
 const inter = Inter({ subsets: ['latin'] })
 
@@ -15,7 +16,6 @@ export default function Home() {
   const [newPass, setnewPass] = useState("");
   const [loading, setLoading] = useState(false);
   const [users, setUsers] = useState<any[]>([]);
-  const [isShown, setIsShown] = useState(false);
 
   // initializes our authorization from firebase
   const auth = firebase.auth() as any;
@@ -43,7 +43,7 @@ export default function Home() {
     const unsub = onSnapshot(q, (querySnapshot) => {
       const items: Array<any> = [];
       querySnapshot.forEach((doc) => {
-        items.push(doc.data());
+        items.push({...doc.data(), id:doc.id});
       });
       setUsers(items);
       setLoading(false);
@@ -55,12 +55,6 @@ export default function Home() {
     // eslint-disable-next-line
   }, []);
   
-//   const [showResults, setShowResults] = React.useState(false)
-// const Search = () => {
-//   setShowResults(true)
-// }
-
-
 // this works to query, but I found a MUCH better way
 
   // // async function to query our data
@@ -78,13 +72,10 @@ export default function Home() {
   //   queryRes();
   // }
 
-
-        // @ts-ignore
-  const handleClick = event => {
-    setIsShown(current => !current);
+  const deleteAcc = async (id: any) => {
+    const userDoc = doc(db, "users", id);
+    await deleteDoc(userDoc);
   };
-
-
 
   return (
     <>
@@ -106,15 +97,12 @@ export default function Home() {
         <div >
           {users.map((user) => (
             <div className={styles.card}>
-              <p>{user.accountName}</p>
-              {isShown && 
-              <p>Username: {user.userName}. Password: {user.accountPassword}</p>
-              }
+              <Accounts accountName={user.accountName} userName={user.userName} accountPassword={user.accountPassword} />
+              <button onClick={() => deleteAcc(user.id)}>X</button>
+              
             </div>
             ))}
-          <button onClick={handleClick}>Click</button> 
         </div>
-
       </main>
     </>
   )
